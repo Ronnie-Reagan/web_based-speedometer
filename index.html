@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>GPS Speed Test</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0b0f14;
+      color: #dfe6ee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+    h1 { margin-bottom: 1rem; color: #4be1ff; }
+    .readout { font-size: 1.2rem; margin: 0.5rem 0; }
+    .speed { font-size: 2rem; color: #00ff9c; }
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background: #1a2533;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #263547; }
+  </style>
+</head>
+<body>
+  <h1>GPS Speed / Velocity Test</h1>
+  <div class="readout">Latitude: <span id="lat">--</span></div>
+  <div class="readout">Longitude: <span id="lon">--</span></div>
+  <div class="readout">Heading: <span id="heading">--</span></div>
+  <div class="readout speed">Speed: <span id="speed">--</span> m/s</div>
+  <button id="start">Start Tracking</button>
+
+  <script>
+    const latEl = document.getElementById("lat");
+    const lonEl = document.getElementById("lon");
+    const headingEl = document.getElementById("heading");
+    const speedEl = document.getElementById("speed");
+    const startBtn = document.getElementById("start");
+
+    let last = null;
+    let lastTime = 0;
+    const R = 6371000; // Earth radius in meters
+
+    startBtn.onclick = () => {
+      if (!navigator.geolocation) {
+        alert("Geolocation not supported");
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        p => {
+          const { latitude, longitude, speed, heading } = p.coords;
+          latEl.textContent = latitude.toFixed(6);
+          lonEl.textContent = longitude.toFixed(6);
+          headingEl.textContent = heading ? heading.toFixed(1) + "°" : "--";
+
+          const now = Date.now() / 1000;
+          let calcSpeed = speed;
+
+          if (!calcSpeed && last) {
+            const dLat = (latitude - last.lat) * Math.PI / 180;
+            const dLon = (longitude - last.lon) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 +
+              Math.cos(last.lat*Math.PI/180) *
+              Math.cos(latitude*Math.PI/180) *
+              Math.sin(dLon/2)**2;
+            const dist = 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            calcSpeed = dist / (now - lastTime);
+          }
+
+          speedEl.textContent = calcSpeed ? calcSpeed.toFixed(2) : "--";
+          last = { lat: latitude, lon: longitude };
+          lastTime = now;
+        },
+        err => alert("Error: " + err.message),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      );
+
+      startBtn.disabled = true;
+      startBtn.textContent = "Tracking…";
+    };
+  </script>
+</body>
+</html>
