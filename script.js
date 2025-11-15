@@ -31,6 +31,17 @@ const elements = {
   resetButton: byId("reset-stats"),
 };
 
+const displayElements = {
+  container: document.querySelector("[data-display-carousel]"),
+  track: byId("display-track"),
+  label: byId("display-label"),
+  indicator: byId("display-indicator"),
+  prevButton: byId("display-prev"),
+  nextButton: byId("display-next"),
+  uploadInput: byId("display-upload"),
+  uploadList: byId("custom-display-list"),
+};
+
 const speedStatsStore = createSpeedStatsStore();
 const accelerationStore = createAccelerationStore();
 const distanceStore = createDistanceStore();
@@ -41,9 +52,18 @@ let watchId = null;
 let lastPosition = null;
 let sessionStart = null;
 let sessionTimer = null;
+const customDisplayFrames = new Set();
+const customDisplayMeta = [];
+const telemetryState = createDefaultTelemetrySnapshot();
 
 restorePersistedReadouts();
 bindControls();
+const carousel = createDisplayCarousel(displayElements);
+createDisplayUploadManager(displayElements, (frame, meta) => {
+  registerCustomDisplayFrame(frame, meta, displayElements.uploadList);
+  carousel.refreshPages();
+});
+updateCustomDisplayList(displayElements.uploadList, customDisplayMeta);
 
 function byId(id) {
   return document.getElementById(id);
@@ -85,29 +105,40 @@ function resetAllStores() {
   const quarterState = quarterMileTracker.reset();
   const zeroSixtyState = zeroSixtyTracker.reset();
 
-  renderSpeedStats(speedStatsStore.get());
-  renderAcceleration(accelState);
-  renderDistance(distance);
-  renderQuarterMile(quarterState);
-  renderZeroSixty(zeroSixtyState);
+  const speedData = renderSpeed(null);
+  const statsData = renderSpeedStats(speedStatsStore.get());
+  const accelerationData = renderAcceleration(accelState);
+  const distanceData = renderDistance(distance);
+  const quarterData = renderQuarterMile(quarterState);
+  const zeroData = renderZeroSixty(zeroSixtyState);
 
   elements.heading.textContent = "--";
   elements.lat.textContent = "--";
   elements.lon.textContent = "--";
-  elements.speed.textContent = "--";
-  elements.speedMph.textContent = "--";
-  elements.speedKph.textContent = "--";
-  elements.speedKnots.textContent = "--";
   elements.sessionDuration.textContent = "00:00:00";
 
   lastPosition = null;
   sessionStart = Date.now();
   updateSessionClock();
+
+  pushTelemetry({
+    lat: null,
+    lon: null,
+    heading: null,
+    ...speedData,
+    ...statsData,
+    ...accelerationData,
+    ...distanceData,
+    ...quarterData,
+    ...zeroData,
+    measurementTimestamp: null,
+  });
 }
 
 function handlePosition(position) {
   const { latitude, longitude, heading, speed } = position.coords;
   const timestampSeconds = position.timestamp / 1000;
+  const headingValue = Number.isFinite(heading) ? ((heading % 360) + 360) % 360 : null;
 
   elements.lat.textContent = formatCoordinate(latitude, "lat");
   elements.lon.textContent = formatCoordinate(longitude, "lon");
@@ -116,24 +147,37 @@ function handlePosition(position) {
   const locationSnapshot = { lat: latitude, lon: longitude, time: timestampSeconds };
   const distanceDelta = computeTravelDelta(locationSnapshot);
   const totalDistance = distanceStore.update(distanceDelta);
-  renderDistance(totalDistance);
+  const distanceData = renderDistance(totalDistance);
 
   const speedValue = resolveSpeed(speed, distanceDelta, locationSnapshot);
-  renderSpeed(speedValue);
+  const speedData = renderSpeed(speedValue);
 
   const stats = speedStatsStore.update(speedValue);
-  renderSpeedStats(stats);
+  const statsData = renderSpeedStats(stats);
 
   const acceleration = accelerationStore.update(speedValue, timestampSeconds);
-  renderAcceleration(acceleration);
+  const accelerationData = renderAcceleration(acceleration);
 
   const quarterState = quarterMileTracker.update(totalDistance, speedValue, timestampSeconds);
-  renderQuarterMile(quarterState);
+  const quarterData = renderQuarterMile(quarterState);
 
   const zeroSixtyState = zeroSixtyTracker.update(speedValue, timestampSeconds);
-  renderZeroSixty(zeroSixtyState);
+  const zeroData = renderZeroSixty(zeroSixtyState);
 
   lastPosition = locationSnapshot;
+
+  pushTelemetry({
+    lat: Number.isFinite(latitude) ? latitude : null,
+    lon: Number.isFinite(longitude) ? longitude : null,
+    heading: headingValue,
+    gpsTimestamp: timestampSeconds,
+    ...speedData,
+    ...statsData,
+    ...accelerationData,
+    ...distanceData,
+    ...quarterData,
+    ...zeroData,
+  });
 }
 
 function handleError(err) {
@@ -151,21 +195,36 @@ function handleError(err) {
 }
 
 function restorePersistedReadouts() {
-  renderSpeedStats(speedStatsStore.get());
-  renderAcceleration(accelerationStore.get());
-  renderDistance(distanceStore.get());
-  renderQuarterMile(quarterMileTracker.get());
-  renderZeroSixty(zeroSixtyTracker.get());
+  const speedData = renderSpeed(null);
+  const statsData = renderSpeedStats(speedStatsStore.get());
+  const accelerationData = renderAcceleration(accelerationStore.get());
+  const distanceData = renderDistance(distanceStore.get());
+  const quarterData = renderQuarterMile(quarterMileTracker.get());
+  const zeroData = renderZeroSixty(zeroSixtyTracker.get());
+
+  pushTelemetry({
+    lat: null,
+    lon: null,
+    heading: null,
+    ...speedData,
+    ...statsData,
+    ...accelerationData,
+    ...distanceData,
+    ...quarterData,
+    ...zeroData,
+    measurementTimestamp: null,
+  });
 }
 
 function updateSessionClock() {
-  if (!sessionStart) {
-    elements.sessionDuration.textContent = "00:00:00";
-    return;
+  let elapsedSeconds = 0;
+  if (sessionStart) {
+    elapsedSeconds = Math.max(0, Math.round((Date.now() - sessionStart) / 1000));
   }
-
-  const elapsedSeconds = Math.max(0, Math.round((Date.now() - sessionStart) / 1000));
   elements.sessionDuration.textContent = formatClock(elapsedSeconds);
+  if (telemetryState.sessionSeconds !== elapsedSeconds) {
+    pushTelemetry({ sessionSeconds: elapsedSeconds });
+  }
 }
 
 function resolveSpeed(rawSpeed, distanceDelta, snapshot) {
@@ -233,19 +292,24 @@ function renderSpeed(speed) {
     elements.speedMph.textContent = "--";
     elements.speedKph.textContent = "--";
     elements.speedKnots.textContent = "--";
-    return;
+    return { speed: null, speedMph: null, speedKph: null, speedKnots: null };
   }
 
+  const mph = speed * 2.236936;
+  const kph = speed * 3.6;
+  const knots = speed * 1.943844;
   elements.speed.textContent = speed.toFixed(2);
-  elements.speedMph.textContent = (speed * 2.236936).toFixed(2);
-  elements.speedKph.textContent = (speed * 3.6).toFixed(2);
-  elements.speedKnots.textContent = (speed * 1.943844).toFixed(2);
+  elements.speedMph.textContent = mph.toFixed(2);
+  elements.speedKph.textContent = kph.toFixed(2);
+  elements.speedKnots.textContent = knots.toFixed(2);
+  return { speed, speedMph: mph, speedKph: kph, speedKnots: knots };
 }
 
 function renderSpeedStats(stats) {
   elements.speedMin.textContent = formatNullable(stats.min);
   elements.speedMax.textContent = formatNullable(stats.max);
   elements.speedAvg.textContent = formatNullable(stats.average);
+  return { speedMin: stats.min, speedMax: stats.max, speedAvg: stats.average };
 }
 
 function renderAcceleration(state) {
@@ -253,23 +317,32 @@ function renderAcceleration(state) {
   elements.decel.textContent = formatNullable(state.currentDecel, value => `${value.toFixed(2)} m/s^2`);
   elements.peakAccel.textContent = formatNullable(state.peakAccel, value => `${value.toFixed(2)} m/s^2`);
   elements.peakDecel.textContent = formatNullable(state.peakDecel, value => `${value.toFixed(2)} m/s^2`);
+  return {
+    accelCurrent: Number.isFinite(state.current) ? state.current : null,
+    decelCurrent: Number.isFinite(state.currentDecel) ? state.currentDecel : null,
+    peakAccel: state.peakAccel,
+    peakDecel: state.peakDecel,
+  };
 }
 
 function renderDistance(totalMeters) {
   const km = totalMeters / 1000;
   const miles = totalMeters / 1609.344;
   elements.distanceTotal.textContent = `${km.toFixed(2)} km / ${miles.toFixed(2)} mi`;
+  return { distanceMeters: totalMeters, distanceKm: km, distanceMiles: miles };
 }
 
 function renderQuarterMile(state) {
   elements.quarterStatus.textContent = state.status;
   elements.quarterLast.textContent = formatNullable(state.lastTime, formatSeconds);
   elements.quarterBest.textContent = formatNullable(state.bestTime, formatSeconds);
+  return { quarterStatus: state.status, quarterLast: state.lastTime, quarterBest: state.bestTime };
 }
 
 function renderZeroSixty(state) {
   elements.zeroSixtyLast.textContent = formatNullable(state.lastTime, formatSeconds);
   elements.zeroSixtyBest.textContent = formatNullable(state.bestTime, formatSeconds);
+  return { zeroSixtyLast: state.lastTime, zeroSixtyBest: state.bestTime };
 }
 
 function formatNullable(value, mapper = defaultNumberFormatter) {
@@ -561,4 +634,351 @@ function createZeroSixtyTracker() {
   }
 
   return { update, reset, get };
+}
+
+function createDefaultTelemetrySnapshot() {
+  return {
+    lat: null,
+    lon: null,
+    heading: null,
+    gpsTimestamp: null,
+    sessionSeconds: 0,
+    speed: null,
+    speedMph: null,
+    speedKph: null,
+    speedKnots: null,
+    speedMin: null,
+    speedMax: null,
+    speedAvg: null,
+    accelCurrent: null,
+    decelCurrent: null,
+    peakAccel: null,
+    peakDecel: null,
+    distanceMeters: 0,
+    distanceKm: 0,
+    distanceMiles: 0,
+    quarterStatus: "Standby",
+    quarterLast: null,
+    quarterBest: null,
+    zeroSixtyLast: null,
+    zeroSixtyBest: null,
+    updatedAt: Date.now(),
+  };
+}
+
+function pushTelemetry(update) {
+  if (!update || typeof update !== "object") {
+    return;
+  }
+  Object.assign(telemetryState, update);
+  telemetryState.updatedAt = Date.now();
+  broadcastTelemetry();
+}
+
+function broadcastTelemetry() {
+  if (!customDisplayFrames.size) {
+    return;
+  }
+  const snapshot = { ...telemetryState };
+  customDisplayFrames.forEach(frame => sendTelemetryToFrame(frame, snapshot));
+}
+
+function sendTelemetryToFrame(frame, payload) {
+  try {
+    frame.contentWindow?.postMessage({ type: "telemetry", payload }, "*");
+  } catch (err) {
+    console.warn("Unable to send telemetry to custom display", err);
+  }
+}
+
+function registerCustomDisplayFrame(frame, meta, listElement) {
+  if (!frame) {
+    return;
+  }
+  customDisplayFrames.add(frame);
+  customDisplayMeta.push(meta);
+  updateCustomDisplayList(listElement, customDisplayMeta);
+  const dispatch = () => sendTelemetryToFrame(frame, { ...telemetryState });
+  frame.addEventListener("load", dispatch);
+  dispatch();
+}
+
+function updateCustomDisplayList(listElement, displays) {
+  if (!listElement) {
+    return;
+  }
+  listElement.innerHTML = "";
+  if (!displays.length) {
+    const empty = document.createElement("li");
+    empty.textContent = "No custom displays loaded yet.";
+    listElement.appendChild(empty);
+    return;
+  }
+  displays.forEach(display => {
+    const li = document.createElement("li");
+    const parts = [];
+    if (display.sources?.html) parts.push("HTML");
+    if (display.sources?.css) parts.push("CSS");
+    if (display.sources?.js) parts.push("JS");
+    const suffix = parts.length ? ` (${parts.join(" + ")})` : "";
+    li.textContent = `${display.label}${suffix}`;
+    listElement.appendChild(li);
+  });
+}
+
+function createDisplayCarousel(elements) {
+  const { container, track, label, indicator, prevButton, nextButton } = elements;
+  if (!container || !track) {
+    return { refreshPages: () => {} };
+  }
+
+  const state = {
+    index: 0,
+    pages: [],
+    width: container.getBoundingClientRect().width,
+    pointerId: null,
+    startX: 0,
+    deltaX: 0,
+  };
+
+  const observer = new MutationObserver(refreshPages);
+  observer.observe(track, { childList: true });
+
+  window.addEventListener("resize", () => {
+    state.width = container.getBoundingClientRect().width;
+    applyTransform();
+  });
+
+  prevButton?.addEventListener("click", () => goTo(state.index - 1));
+  nextButton?.addEventListener("click", () => goTo(state.index + 1));
+
+  track.addEventListener("pointerdown", pointerDown);
+  track.addEventListener("pointermove", pointerMove);
+  window.addEventListener("pointerup", pointerUp);
+  track.addEventListener("pointercancel", pointerUp);
+
+  function refreshPages() {
+    state.pages = Array.from(track.children);
+    if (!state.pages.length) {
+      state.index = 0;
+    } else if (state.index >= state.pages.length) {
+      state.index = state.pages.length - 1;
+    }
+    updateControls();
+    applyTransform();
+  }
+
+  function goTo(targetIndex) {
+    if (!state.pages.length) {
+      return;
+    }
+    const nextIndex = Math.max(0, Math.min(targetIndex, state.pages.length - 1));
+    if (nextIndex === state.index) {
+      track.style.transition = "";
+      applyTransform();
+      return;
+    }
+    state.index = nextIndex;
+    track.style.transition = "";
+    applyTransform();
+    updateControls();
+  }
+
+  function updateControls() {
+    if (label) {
+      const active = state.pages[state.index];
+      label.textContent = active?.dataset.label || `Display ${state.index + 1}`;
+    }
+    if (indicator) {
+      const total = Math.max(state.pages.length, 1);
+      indicator.textContent = `${Math.min(state.index + 1, total)} / ${total}`;
+    }
+    if (prevButton) {
+      prevButton.disabled = state.index <= 0;
+    }
+    if (nextButton) {
+      nextButton.disabled = !state.pages.length || state.index >= state.pages.length - 1;
+    }
+  }
+
+  function pointerDown(event) {
+    if (event.pointerType === "mouse" && event.buttons !== 1) {
+      return;
+    }
+    state.pointerId = event.pointerId;
+    state.startX = event.clientX;
+    state.deltaX = 0;
+    track.style.transition = "none";
+    track.setPointerCapture?.(event.pointerId);
+  }
+
+  function pointerMove(event) {
+    if (event.pointerId !== state.pointerId) {
+      return;
+    }
+    state.deltaX = event.clientX - state.startX;
+    applyTransform(state.deltaX);
+  }
+
+  function pointerUp(event) {
+    if (event.pointerId !== state.pointerId) {
+      return;
+    }
+    track.releasePointerCapture?.(event.pointerId);
+    track.style.transition = "";
+    finishSwipe();
+    state.pointerId = null;
+  }
+
+  function finishSwipe() {
+    const threshold = Math.min(120, state.width * 0.2);
+    if (Math.abs(state.deltaX) > threshold) {
+      if (state.deltaX < 0) {
+        goTo(state.index + 1);
+      } else {
+        goTo(state.index - 1);
+      }
+    } else {
+      applyTransform();
+    }
+    state.deltaX = 0;
+  }
+
+  function applyTransform(extra = 0) {
+    state.width = container.getBoundingClientRect().width || 1;
+    const offset = -state.index * state.width + extra;
+    track.style.transform = `translate3d(${offset}px, 0, 0)`;
+  }
+
+  refreshPages();
+
+  return { refreshPages, goTo };
+}
+
+function createDisplayUploadManager(elements, onDisplayReady) {
+  const { uploadInput, track } = elements;
+  if (!uploadInput || !track) {
+    return;
+  }
+
+  uploadInput.addEventListener("change", async event => {
+    const files = Array.from(event.target.files || []);
+    uploadInput.value = "";
+    if (!files.length) {
+      return;
+    }
+
+    const groups = groupFilesByBasename(files);
+    let processed = 0;
+    for (const group of groups.values()) {
+      if (!group.html) {
+        continue;
+      }
+      const label = formatDisplayLabel(group.baseName);
+      try {
+        const content = await readGroupFiles(group);
+        const page = document.createElement("article");
+        page.className = "display-page display-page--external";
+        page.dataset.label = label;
+        const frame = document.createElement("iframe");
+        frame.title = `${label} display`;
+        frame.loading = "lazy";
+        frame.setAttribute("sandbox", "allow-scripts");
+        frame.srcdoc = composeModuleDocument(content);
+        page.appendChild(frame);
+        track.appendChild(page);
+        const sources = {
+          html: group.html?.name ?? null,
+          css: group.css?.name ?? null,
+          js: group.js?.name ?? null,
+        };
+        onDisplayReady?.(frame, { label, sources });
+        processed += 1;
+      } catch (err) {
+        console.error("Unable to load custom display", err);
+        window.alert(`Unable to load display "${label}": ${err.message}`);
+      }
+    }
+
+    if (!processed) {
+      window.alert("No HTML files were processed. Each display requires at least one .html/.htm file.");
+    }
+  });
+}
+
+function groupFilesByBasename(files) {
+  const groups = new Map();
+  files.forEach(file => {
+    const match = /\.([^.]+)$/i.exec(file.name);
+    if (!match) {
+      return;
+    }
+    const ext = match[1].toLowerCase();
+    if (!["html", "htm", "css", "js"].includes(ext)) {
+      return;
+    }
+    const baseName = file.name.slice(0, -match[0].length) || file.name;
+    const key = baseName.toLowerCase();
+    if (!groups.has(key)) {
+      groups.set(key, { baseName });
+    }
+    const bucket = groups.get(key);
+    if (ext === "html" || ext === "htm") {
+      bucket.html = file;
+    } else {
+      bucket[ext] = file;
+    }
+  });
+  return groups;
+}
+
+async function readGroupFiles(group) {
+  const html = group.html ? await readFile(group.html) : "";
+  if (!html.trim()) {
+    throw new Error("HTML file is empty.");
+  }
+  const css = group.css ? await readFile(group.css) : "";
+  const js = group.js ? await readFile(group.js) : "";
+  return { html, css, js };
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result || "");
+    reader.onerror = () => reject(reader.error || new Error("Unable to read file."));
+    reader.readAsText(file);
+  });
+}
+
+function formatDisplayLabel(baseName) {
+  if (!baseName) {
+    return "Custom Display";
+  }
+  return baseName
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function composeModuleDocument(parts) {
+  const cssBlock = parts.css ? `<style>${parts.css}</style>` : "";
+  const jsBlock = parts.js ? `<script>${escapeScriptContent(parts.js)}<\/script>` : "";
+  const bridge = `
+    <script>
+      window.addEventListener('message', function(event) {
+        if (!event.data || event.data.type !== 'telemetry') {
+          return;
+        }
+        window.currentTelemetry = event.data.payload;
+        window.dispatchEvent(new CustomEvent('telemetry-update', { detail: event.data.payload }));
+      });
+    </script>
+  `;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${cssBlock}</head><body>${parts.html}${bridge}${jsBlock}</body></html>`;
+}
+
+function escapeScriptContent(content = "") {
+  return content.replace(/<\/script/gi, "<\\/script");
 }
