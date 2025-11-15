@@ -1,0 +1,56 @@
+<!--
+  Custom Display Example Markup
+  -----------------------------
+  Upload this file alongside `custom-display-example.css` and
+  `custom-display-example.js` via the dashboard's "Upload Display Files" button.
+  Because all three files share the same base name, they'll be bundled into a
+  single swipeable screen you can use as a starter layout.
+-->
+
+<section class="hud">
+  <header class="hud__header">
+    <p class="hud__eyebrow">GPS Telemetry</p>
+    <h1 class="hud__title">Track Companion</h1>
+    <p class="hud__subtitle">Live speed, acceleration, and milestone tracking.</p>
+  </header>
+
+  <div class="hud__grid">
+    <article class="tile tile--speed">
+      <p class="tile__label">Speed</p>
+      <div class="speed-reading">
+        <span class="speed-reading__value" data-field="speed">--</span>
+        <span class="speed-reading__unit" data-field="speed-units">m/s</span>
+      </div>
+      <p class="tile__hint">Swipe left/right inside the main dashboard to visit this view.</p>
+    </article>
+
+    <article class="tile tile--accel">
+      <p class="tile__label">Acceleration</p>
+      <p class="tile__value" data-field="accel" data-state="idle">--</p>
+      <p class="tile__hint">Shows live accel/decel in m/s².</p>
+    </article>
+
+    <article class="tile tile--status">
+      <p class="tile__label">¼ Mile Status</p>
+      <p class="tile__body" data-field="quarter-status">
+        <strong>Standby</strong><br>
+        Last: -- | Best: --
+      </p>
+    </article>
+
+    <article class="tile tile--status">
+      <p class="tile__label">0-60 mph</p>
+      <p class="tile__body" data-field="zero-sixty">--</p>
+    </article>
+
+    <article class="tile tile--coords">
+      <p class="tile__label">Position</p>
+      <p class="tile__value" data-field="coords">GPS unavailable</p>
+    </article>
+
+    <article class="tile tile--updated">
+      <p class="tile__label">Last Update</p>
+      <p class="tile__value" data-field="updated">Waiting…</p>
+    </article>
+  </div>
+</section>

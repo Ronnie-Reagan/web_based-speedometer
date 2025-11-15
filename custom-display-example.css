@@ -1,0 +1,146 @@
+:root {
+  color-scheme: dark;
+  font-family: "Space Grotesk", "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background: radial-gradient(circle at top, rgba(75, 225, 255, 0.2), transparent 55%),
+    radial-gradient(circle at bottom, rgba(0, 0, 0, 0.35), transparent 60%),
+    #020508;
+  color: #e9f1ff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hud {
+  width: min(960px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.hud__header {
+  text-align: center;
+}
+
+.hud__eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: #73d8ff;
+  font-size: 0.75rem;
+}
+
+.hud__title {
+  margin: 0.25rem 0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  letter-spacing: 0.08em;
+}
+
+.hud__subtitle {
+  margin: 0;
+  color: #9fb5cc;
+  font-size: 1rem;
+}
+
+.hud__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.tile {
+  padding: 1.25rem;
+  border-radius: 24px;
+  background: rgba(7, 11, 18, 0.8);
+  border: 1px solid rgba(115, 216, 255, 0.18);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+}
+
+.tile--speed {
+  grid-column: span 2;
+  min-height: 190px;
+  background: linear-gradient(135deg, rgba(7, 11, 18, 0.8), rgba(0, 90, 135, 0.85));
+}
+
+.tile__label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: #7aa0c1;
+}
+
+.tile__value {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 600;
+}
+
+.tile__body {
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+}
+
+.tile__hint {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+  color: #89a7c4;
+}
+
+.speed-reading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-height: 120px;
+}
+
+.speed-reading__value {
+  font-size: clamp(3rem, 12vw, 6rem);
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+.speed-reading__value.is-live {
+  color: #19ffa0;
+}
+
+.speed-reading__unit {
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: #89a7c4;
+}
+
+[data-field="accel"][data-state="accel"] {
+  color: #19ffa0;
+}
+
+[data-field="accel"][data-state="decel"] {
+  color: #ff7b7b;
+}
+
+.tile--coords {
+  grid-column: span 2;
+}
+
+.tile--updated {
+  text-align: center;
+  color: #89a7c4;
+}
+
+@media (max-width: 600px) {
+  .tile--speed,
+  .tile--coords {
+    grid-column: span 1;
+  }
+}
