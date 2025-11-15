@@ -80,6 +80,12 @@ body {
   background: rgba(75, 225, 255, 0.28);
 }
 
+.controls button.button--stop {
+  background: rgba(255, 123, 123, 0.18);
+  border-color: rgba(255, 123, 123, 0.6);
+  color: #ffe0e0;
+}
+
 .controls button:focus-visible,
 .pager__button:focus-visible,
 .upload-button:focus-visible {
@@ -223,6 +229,73 @@ body {
   font-size: 0.95rem;
   color: var(--muted);
   grid-column: 1 / -1;
+}
+
+.display-page--mirror {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem 1.5rem;
+  background: radial-gradient(circle at top, rgba(0, 255, 197, 0.12), transparent 60%), #020303;
+  transform: scaleX(-1);
+}
+
+.mirror-display {
+  max-width: 600px;
+  text-align: center;
+}
+
+.mirror-display__intro,
+.mirror-display__hint {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.05em;
+}
+
+.mirror-display__metrics {
+  margin: 1.25rem 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.mirror-display__metric {
+  border-radius: 28px;
+  padding: 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  text-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+}
+
+.mirror-display__metric--kph {
+  border-color: rgba(0, 255, 197, 0.55);
+  color: #47ffd9;
+}
+
+.mirror-display__metric--mph {
+  border-color: rgba(255, 123, 123, 0.55);
+  color: #ff7b7b;
+}
+
+.mirror-display__label {
+  display: block;
+  font-size: 0.85rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.mirror-display__value {
+  display: block;
+  font-size: clamp(3rem, 18vw, 6.5rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.mirror-display__hint {
+  font-size: 0.85rem;
 }
 
 .display-page--external {

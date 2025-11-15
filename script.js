@@ -29,6 +29,8 @@ const elements = {
   zeroSixtyBest: byId("zero-sixty-best"),
   startButton: byId("start"),
   resetButton: byId("reset-stats"),
+  mirrorKph: byId("mirror-speed-kph"),
+  mirrorMph: byId("mirror-speed-mph"),
 };
 
 const displayElements = {
@@ -52,6 +54,7 @@ let watchId = null;
 let lastPosition = null;
 let sessionStart = null;
 let sessionTimer = null;
+let isTracking = false;
 const customDisplayFrames = new Set();
 const customDisplayMeta = [];
 const telemetryState = createDefaultTelemetrySnapshot();
@@ -70,8 +73,26 @@ function byId(id) {
 }
 
 function bindControls() {
-  elements.startButton?.addEventListener("click", startTracking);
+  elements.startButton?.addEventListener("click", toggleTracking);
   elements.resetButton?.addEventListener("click", resetAllStores);
+  updateStartButtonState();
+}
+
+function toggleTracking() {
+  if (isTracking) {
+    stopTracking();
+  } else {
+    startTracking();
+  }
+}
+
+function updateStartButtonState() {
+  if (!elements.startButton) {
+    return;
+  }
+  elements.startButton.disabled = false;
+  elements.startButton.textContent = isTracking ? "Stop Tracking" : "Start Tracking";
+  elements.startButton.classList.toggle("button--stop", isTracking);
 }
 
 function startTracking() {
@@ -80,12 +101,12 @@ function startTracking() {
     return;
   }
 
-  if (watchId !== null) {
+  if (isTracking) {
     return;
   }
 
-  elements.startButton.disabled = true;
-  elements.startButton.textContent = "Tracking…";
+  isTracking = true;
+  updateStartButtonState();
 
   sessionStart = Date.now();
   updateSessionClock();
@@ -96,6 +117,19 @@ function startTracking() {
     handleError,
     { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
   );
+}
+
+function stopTracking() {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  if (sessionTimer) {
+    clearInterval(sessionTimer);
+    sessionTimer = null;
+  }
+  isTracking = false;
+  updateStartButtonState();
 }
 
 function resetAllStores() {
@@ -182,16 +216,7 @@ function handlePosition(position) {
 
 function handleError(err) {
   window.alert(`Geolocation error: ${err.message}`);
-  if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
-  elements.startButton.disabled = false;
-  elements.startButton.textContent = "Start Tracking";
-  if (sessionTimer) {
-    clearInterval(sessionTimer);
-    sessionTimer = null;
-  }
+  stopTracking();
 }
 
 function restorePersistedReadouts() {
@@ -292,6 +317,7 @@ function renderSpeed(speed) {
     elements.speedMph.textContent = "--";
     elements.speedKph.textContent = "--";
     elements.speedKnots.textContent = "--";
+    updateMirrorSpeedDisplay(null, null);
     return { speed: null, speedMph: null, speedKph: null, speedKnots: null };
   }
 
@@ -302,7 +328,17 @@ function renderSpeed(speed) {
   elements.speedMph.textContent = mph.toFixed(2);
   elements.speedKph.textContent = kph.toFixed(2);
   elements.speedKnots.textContent = knots.toFixed(2);
+  updateMirrorSpeedDisplay(kph, mph);
   return { speed, speedMph: mph, speedKph: kph, speedKnots: knots };
+}
+
+function updateMirrorSpeedDisplay(kph, mph) {
+  if (elements.mirrorKph) {
+    elements.mirrorKph.textContent = Number.isFinite(kph) ? Math.round(kph).toString() : "--";
+  }
+  if (elements.mirrorMph) {
+    elements.mirrorMph.textContent = Number.isFinite(mph) ? Math.round(mph).toString() : "--";
+  }
 }
 
 function renderSpeedStats(stats) {
