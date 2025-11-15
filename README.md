@@ -1,4 +1,40 @@
-https://ronnie-reagan.github.io/web_based-speedometer
+# Click [**Here**](https://ronnie-reagan.github.io/web_based-speedometer) for the website.
+
+## Understanding the Interface
+_Notice: The website is under active development so some details may be changed._
+
+---
+
+### Overview
+- Posistion
+    - Displays your currently reported geo-location in lat/lon and heading
+- Trip Summary
+    - Tracks your total tracked distance and the time spent tracking **this** session
+
+---
+
+### Speed
+- Instant Speed
+    - Displays your speed in m/s, kph, mph and knots
+- Historical
+    - Min, Max and Avg. speed in m/s
+
+---
+
+### Performance
+- Acceleration
+    - Accel, decel with peaks in m/s^2
+- Performance Timers
+    - Quarter mile tracking (under construction; currently tracks rolling runs automatically)
+    - 0-60 mph speeds (last/best)
+
+---
+
+### HUD Mirror
+- Displays a HUD style display for viewing on your windsheild by laying your phone on your dash
+    - KPH/MPH display with high contrast colouring for ease display on reflection
+
+---
 
 ## Custom display starter kit
 
