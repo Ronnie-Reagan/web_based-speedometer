@@ -45,3 +45,23 @@ The `custom-display-example.*` files demonstrate how to build a swipeable displa
 3. Swipe through the dashboard to find the new “Track Companion” screen; edit the files to experiment with your own layout.
 
 The JavaScript example is heavily commented to help you listen for the `telemetry-update` event and render speed/acceleration/timer data. Use it as a boilerplate for client-mode experiments.
+
+### Script-only displays and raw APIs
+
+- Uploading only a `.js` file (with optional `.css`) is now supported. When an HTML file is missing, the dashboard injects a default mounting surface and exposes the `registerDisplay` helper.
+- Example usage:
+
+  ```js
+  registerDisplay(({ mount, onTelemetry }) => {
+    const output = document.createElement('div');
+    output.style.cssText = 'font: 700 clamp(2rem,8vw,4rem)/1 system-ui; text-align:center;';
+    mount(output);
+
+    return onTelemetry(data => {
+      const speed = Number(data.speedKph ?? data.speedMph ?? 0);
+      output.textContent = Number.isFinite(speed) ? `${speed.toFixed(1)} km/h` : 'Waiting…';
+    });
+  });
+  ```
+
+- For more advanced runtimes (Lua/Python transpilers, etc.) read from `window.DisplayHost`, which exposes `root`, `onTelemetry`, `mount`, `clear`, and `getTelemetry()` so other languages can wire into the callback surface.

@@ -17,14 +17,21 @@
 
 body {
   margin: 0;
-  padding: 2rem clamp(1rem, 3vw, 2.5rem);
+  padding: clamp(1rem, 2.5vw, 2rem) clamp(1rem, 3vw, 2.5rem);
   background: radial-gradient(circle at top, rgba(75, 225, 255, 0.12), transparent 55%),
     radial-gradient(circle at bottom, rgba(111, 255, 176, 0.08), transparent 60%),
     var(--bg);
   color: var(--text);
   display: flex;
   justify-content: center;
+  align-items: stretch;
   min-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  body {
+    min-height: 100dvh;
+  }
 }
 
 .dashboard {
@@ -210,7 +217,7 @@ body {
 .display-track {
   display: flex;
   transition: transform 0.35s ease;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
   will-change: transform;
 }
 
@@ -305,7 +312,7 @@ body {
 
 .display-page--external iframe {
   width: 100%;
-  min-height: 420px;
+  min-height: clamp(260px, 60vh, 520px);
   border: none;
   border-radius: 18px;
   background: rgba(6, 8, 12, 0.85);
@@ -358,7 +365,7 @@ body {
 
 @media (max-width: 640px) {
   body {
-    padding-inline: 1rem;
+    padding: 1rem;
   }
 
   .card {
@@ -383,5 +390,32 @@ body {
 
   .display-page {
     min-height: 460px;
+  }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  body {
+    padding: 0.75rem;
+  }
+
+  .dashboard {
+    gap: 1rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .display-page {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .display-page--mirror {
+    padding: 1.25rem;
+  }
+
+  .display-page--external iframe {
+    min-height: clamp(220px, 55vh, 420px);
   }
 }

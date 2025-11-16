@@ -775,6 +775,8 @@ function createDisplayCarousel(elements) {
     pointerId: null,
     startX: 0,
     deltaX: 0,
+    activePointers: new Set(),
+    isMultiTouch: false,
   };
 
   const observer = new MutationObserver(refreshPages);
@@ -841,6 +843,19 @@ function createDisplayCarousel(elements) {
     if (event.pointerType === "mouse" && event.buttons !== 1) {
       return;
     }
+
+    state.activePointers.add(event.pointerId);
+
+    if (event.pointerType === "touch" && state.activePointers.size > 1) {
+      state.isMultiTouch = true;
+      cancelSwipe();
+      return;
+    }
+
+    if (state.isMultiTouch) {
+      return;
+    }
+
     state.pointerId = event.pointerId;
     state.startX = event.clientX;
     state.deltaX = 0;
@@ -849,7 +864,7 @@ function createDisplayCarousel(elements) {
   }
 
   function pointerMove(event) {
-    if (event.pointerId !== state.pointerId) {
+    if (state.isMultiTouch || event.pointerId !== state.pointerId) {
       return;
     }
     state.deltaX = event.clientX - state.startX;
@@ -857,13 +872,26 @@ function createDisplayCarousel(elements) {
   }
 
   function pointerUp(event) {
+    state.activePointers.delete(event.pointerId);
+    if (!state.activePointers.size) {
+      state.isMultiTouch = false;
+    }
     if (event.pointerId !== state.pointerId) {
+      if (!state.activePointers.has(state.pointerId)) {
+        state.pointerId = null;
+        state.deltaX = 0;
+      }
       return;
     }
     track.releasePointerCapture?.(event.pointerId);
     track.style.transition = "";
-    finishSwipe();
+    if (!state.isMultiTouch) {
+      finishSwipe();
+    } else {
+      applyTransform();
+    }
     state.pointerId = null;
+    state.deltaX = 0;
   }
 
   function finishSwipe() {
@@ -884,6 +912,16 @@ function createDisplayCarousel(elements) {
     state.width = container.getBoundingClientRect().width || 1;
     const offset = -state.index * state.width + extra;
     track.style.transform = `translate3d(${offset}px, 0, 0)`;
+  }
+
+  function cancelSwipe() {
+    if (state.pointerId !== null) {
+      track.releasePointerCapture?.(state.pointerId);
+    }
+    state.pointerId = null;
+    state.deltaX = 0;
+    track.style.transition = "";
+    applyTransform();
   }
 
   refreshPages();
@@ -907,7 +945,7 @@ function createDisplayUploadManager(elements, onDisplayReady) {
     const groups = groupFilesByBasename(files);
     let processed = 0;
     for (const group of groups.values()) {
-      if (!group.html) {
+      if (!group.html && !group.js) {
         continue;
       }
       const label = formatDisplayLabel(group.baseName);
@@ -937,7 +975,7 @@ function createDisplayUploadManager(elements, onDisplayReady) {
     }
 
     if (!processed) {
-      window.alert("No HTML files were processed. Each display requires at least one .html/.htm file.");
+      window.alert("No display files were processed. Please include at least one .html or .js file per display.");
     }
   });
 }
@@ -969,13 +1007,19 @@ function groupFilesByBasename(files) {
 }
 
 async function readGroupFiles(group) {
-  const html = group.html ? await readFile(group.html) : "";
-  if (!html.trim()) {
+  const hasHtml = Boolean(group.html);
+  const hasCss = Boolean(group.css);
+  const hasJs = Boolean(group.js);
+  if (!hasHtml && !hasJs) {
+    throw new Error("A display must include an HTML or JS file.");
+  }
+  const html = hasHtml ? await readFile(group.html) : "";
+  if (hasHtml && !html.trim()) {
     throw new Error("HTML file is empty.");
   }
-  const css = group.css ? await readFile(group.css) : "";
-  const js = group.js ? await readFile(group.js) : "";
-  return { html, css, js };
+  const css = hasCss ? await readFile(group.css) : "";
+  const js = hasJs ? await readFile(group.js) : "";
+  return { html, css, js, hasHtml, hasCss, hasJs };
 }
 
 function readFile(file) {
@@ -999,20 +1043,176 @@ function formatDisplayLabel(baseName) {
 }
 
 function composeModuleDocument(parts) {
+  const hasHtml = Boolean(parts.hasHtml && parts.html.trim());
+  const fallbackMarkup = `
+    <div class="display-host__root" data-display-root>
+      <p class="display-host__hint">Use <code>registerDisplay()</code> in your script to render this surface.</p>
+    </div>
+  `;
+  const fallbackStyles = `
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #050a11;
+        color: #f3f7ff;
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+      }
+      .display-host__root {
+        width: 100%;
+        min-height: 100vh;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      .display-host__hint {
+        max-width: 28rem;
+        margin: 0;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        opacity: 0.7;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .display-host__hint code {
+        font-family: inherit;
+        color: #4be1ff;
+      }
+    </style>
+  `;
+  const htmlBlock = hasHtml ? parts.html : fallbackMarkup;
   const cssBlock = parts.css ? `<style>${parts.css}</style>` : "";
-  const jsBlock = parts.js ? `<script>${escapeScriptContent(parts.js)}<\/script>` : "";
-  const bridge = `
-    <script>
+  const baseStyles = hasHtml ? "" : fallbackStyles;
+  const bridgeScript = `
+    (function() {
+      const listeners = new Set();
+      const root = document.querySelector('[data-display-root]') || document.body;
+
+      function safeInvoke(listener, payload) {
+        try {
+          listener(payload);
+        } catch (err) {
+          console.error('[display] telemetry listener error', err);
+        }
+      }
+
+      function dispatchTelemetry(payload) {
+        window.currentTelemetry = payload;
+        try {
+          window.dispatchEvent(new CustomEvent('telemetry-update', { detail: payload }));
+        } catch (err) {
+          if (typeof document !== 'undefined' && document.createEvent) {
+            const fallback = document.createEvent('CustomEvent');
+            fallback.initCustomEvent('telemetry-update', false, false, payload);
+            window.dispatchEvent(fallback);
+          }
+        }
+        listeners.forEach(listener => safeInvoke(listener, payload));
+      }
+
+      function addTelemetryListener(listener) {
+        if (typeof listener !== 'function') {
+          return function noop() {};
+        }
+        listeners.add(listener);
+        if (window.currentTelemetry) {
+          safeInvoke(listener, window.currentTelemetry);
+        }
+        return function unsubscribe() {
+          listeners.delete(listener);
+        };
+      }
+
+      function currentTelemetry() {
+        return window.currentTelemetry || null;
+      }
+
+      function clearRoot() {
+        if (root) {
+          root.innerHTML = '';
+        }
+      }
+
+      function mount(node) {
+        if (!root) {
+          return;
+        }
+        clearRoot();
+        if (!node) {
+          return;
+        }
+        if (typeof node === 'string') {
+          root.innerHTML = node;
+          return;
+        }
+        const isElement = typeof Element !== 'undefined' && node instanceof Element;
+        const isFragment = typeof DocumentFragment !== 'undefined' && node instanceof DocumentFragment;
+        if (isElement || isFragment) {
+          root.appendChild(node);
+        }
+      }
+
+      const baseApi = {
+        get root() {
+          return root;
+        },
+        get telemetry() {
+          return currentTelemetry();
+        },
+        getTelemetry: currentTelemetry,
+        onTelemetry: addTelemetryListener,
+        mount,
+        clear: clearRoot,
+      };
+
+      window.DisplayHost = baseApi;
+
+      window.registerDisplay = function registerDisplay(factory) {
+        if (typeof factory !== 'function') {
+          console.warn('[display] registerDisplay expected a function');
+          return;
+        }
+        const api = {
+          root,
+          telemetry: currentTelemetry(),
+          getTelemetry: currentTelemetry,
+          onTelemetry: addTelemetryListener,
+          mount,
+          clear: clearRoot,
+        };
+        try {
+          const teardown = factory(api);
+          if (typeof teardown === 'function') {
+            window.addEventListener('pagehide', function handlePageHide() {
+              try {
+                teardown();
+              } catch (err) {
+                console.error('[display] teardown error', err);
+              }
+            }, { once: true });
+          }
+        } catch (err) {
+          console.error('[display] registerDisplay factory failed', err);
+        }
+      };
+
       window.addEventListener('message', function(event) {
         if (!event.data || event.data.type !== 'telemetry') {
           return;
         }
-        window.currentTelemetry = event.data.payload;
-        window.dispatchEvent(new CustomEvent('telemetry-update', { detail: event.data.payload }));
+        dispatchTelemetry(event.data.payload);
       });
-    </script>
+    })();
   `;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${cssBlock}</head><body>${parts.html}${bridge}${jsBlock}</body></html>`;
+  const bridge = `<script>${escapeScriptContent(bridgeScript)}<\/script>`;
+  const jsBlock = parts.js ? `<script>${escapeScriptContent(parts.js)}<\/script>` : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${baseStyles}${cssBlock}</head><body>${htmlBlock}${bridge}${jsBlock}</body></html>`;
 }
 
 function escapeScriptContent(content = "") {
