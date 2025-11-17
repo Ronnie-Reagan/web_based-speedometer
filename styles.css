@@ -224,6 +224,7 @@ body {
   background: rgba(3, 7, 12, 0.75);
   overflow: hidden;
   display: flex;
+  min-height: fit-content;
 }
 
 .display-track {
