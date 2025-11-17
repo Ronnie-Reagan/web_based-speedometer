@@ -7,128 +7,130 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="dashboard">
-    <header class="dashboard__header">
-      <h1>Web-Based Speedometer</h1>
-      <p class="tagline">Live telemetry with persistent performance tracking.</p>
-    </header>
+  <div class="app-stage" data-app-stage>
+    <main class="dashboard" data-app-surface>
+      <header class="dashboard__header">
+        <h1>Web-Based Speedometer</h1>
+        <p class="tagline">Live telemetry with persistent performance tracking.</p>
+      </header>
 
-    <section class="controls">
-      <div class="controls__stack">
-        <button id="start" type="button">Start Tracking</button>
-        <button id="reset-stats" type="button">Reset Stats</button>
-      </div>
-
-      <div class="pager" aria-live="polite">
-        <button id="display-prev" class="pager__button" type="button" aria-label="Previous display">‹</button>
-        <div class="pager__status">
-          <span id="display-label" class="pager__label">Overview</span>
-          <small id="display-indicator" class="pager__indicator">1 / 3</small>
+      <section class="controls">
+        <div class="controls__stack">
+          <button id="start" type="button">Start Tracking</button>
+          <button id="reset-stats" type="button">Reset Stats</button>
         </div>
-        <button id="display-next" class="pager__button" type="button" aria-label="Next display">›</button>
-      </div>
-    </section>
 
-    <section class="display-wrapper" data-display-carousel>
-      <div class="display-track" id="display-track">
-
-        <article class="display-page" data-label="Overview">
-          <h2 class="display-page__title">Overview</h2>
-          <section class="card">
-            <h3 class="card__title">Position</h3>
-            <dl class="readout-list">
-              <div class="readout"><dt>Latitude</dt><dd id="lat">--</dd></div>
-              <div class="readout"><dt>Longitude</dt><dd id="lon">--</dd></div>
-              <div class="readout"><dt>Heading</dt><dd id="heading">--</dd></div>
-            </dl>
-          </section>
-
-          <section class="card">
-            <h3 class="card__title">Trip Summary</h3>
-            <dl class="readout-list">
-              <div class="readout"><dt>Total Distance</dt><dd id="distance-total">0.00 km / 0.00 mi</dd></div>
-              <div class="readout"><dt>Session Time</dt><dd id="session-duration">00:00:00</dd></div>
-            </dl>
-          </section>
-        </article>
-
-        <article class="display-page" data-label="Speed">
-          <h2 class="display-page__title">Speed & Stats</h2>
-          <section class="card">
-            <h3 class="card__title">Instant Speed</h3>
-            <dl class="readout-list">
-              <div class="readout readout--highlight"><dt>Speed (m/s)</dt><dd id="speed">--</dd></div>
-              <div class="readout"><dt>Speed (mph)</dt><dd id="speed-mph">--</dd></div>
-              <div class="readout"><dt>Speed (km/h)</dt><dd id="speed-kph">--</dd></div>
-              <div class="readout"><dt>Speed (knots)</dt><dd id="speed-knots">--</dd></div>
-            </dl>
-          </section>
-
-          <section class="card">
-            <h3 class="card__title">Historical</h3>
-            <dl class="readout-list">
-              <div class="readout"><dt>Minimum (m/s)</dt><dd id="speed-min">--</dd></div>
-              <div class="readout"><dt>Maximum (m/s)</dt><dd id="speed-max">--</dd></div>
-              <div class="readout"><dt>Average (m/s)</dt><dd id="speed-avg">--</dd></div>
-            </dl>
-          </section>
-        </article>
-
-        <article class="display-page" data-label="Performance">
-          <h2 class="display-page__title">Acceleration & Timers</h2>
-          <section class="card">
-            <h3 class="card__title">Acceleration</h3>
-            <dl class="readout-list">
-              <div class="readout"><dt>Acceleration</dt><dd id="accel">--</dd></div>
-              <div class="readout"><dt>Deceleration</dt><dd id="decel">--</dd></div>
-              <div class="readout"><dt>Peak Accel</dt><dd id="peak-accel">--</dd></div>
-              <div class="readout"><dt>Peak Decel</dt><dd id="peak-decel">--</dd></div>
-            </dl>
-          </section>
-
-          <section class="card">
-            <h3 class="card__title">Performance Timers</h3>
-            <dl class="readout-list">
-              <div class="readout"><dt>¼ Mile Status</dt><dd id="quarter-status">Standby</dd></div>
-              <div class="readout"><dt>¼ Mile Last</dt><dd id="quarter-last">--</dd></div>
-              <div class="readout"><dt>¼ Mile Best</dt><dd id="quarter-best">--</dd></div>
-              <div class="readout"><dt>0-60 mph Last</dt><dd id="zero-sixty-last">--</dd></div>
-              <div class="readout"><dt>0-60 mph Best</dt><dd id="zero-sixty-best">--</dd></div>
-            </dl>
-          </section>
-        </article>
-
-        <article class="display-page display-page--mirror" data-label="HUD Mirror">
-          <div class="mirror-display">
-            <p class="mirror-display__intro">Mirrored HUD for windshield reflections. Place your device on the dash and view the reflection for correct orientation.</p>
-            <div class="mirror-display__metrics">
-              <div class="mirror-display__metric mirror-display__metric--kph">
-                <span class="mirror-display__label">KPH</span>
-                <span class="mirror-display__value" id="mirror-speed-kph">--</span>
-              </div>
-              <div class="mirror-display__metric mirror-display__metric--mph">
-                <span class="mirror-display__label">MPH</span>
-                <span class="mirror-display__value" id="mirror-speed-mph">--</span>
-              </div>
-            </div>
-            <p class="mirror-display__hint">Tip: increase screen brightness and use dark surroundings for the sharpest reflection.</p>
+        <div class="pager" aria-live="polite">
+          <button id="display-prev" class="pager__button" type="button" aria-label="Previous display">‹</button>
+          <div class="pager__status">
+            <span id="display-label" class="pager__label">Overview</span>
+            <small id="display-indicator" class="pager__indicator">1 / 3</small>
           </div>
-        </article>
-      </div>
-    </section>
+          <button id="display-next" class="pager__button" type="button" aria-label="Next display">›</button>
+        </div>
+      </section>
 
-    <section class="display-upload">
-      <div>
-        <h2>Custom Displays</h2>
-        <p>Upload a set of HTML, CSS, and JS files to create swipeable screens for client-built layouts. Files with the same base name will be grouped into a display. <strong>Tip:</strong> inside your custom JS listen for the <code>telemetry-update</code> event to react to live data.</p>
-      </div>
-      <label class="upload-button">
-        <input id="display-upload" type="file" accept=".html,.htm,.css,.js" multiple>
-        <span>Upload Display Files</span>
-      </label>
-      <ul class="upload-list" id="custom-display-list" aria-live="polite"></ul>
-    </section>
-  </main>
+      <section class="display-wrapper" data-display-carousel>
+        <div class="display-track" id="display-track">
+
+          <article class="display-page" data-label="Overview">
+            <h2 class="display-page__title">Overview</h2>
+            <section class="card">
+              <h3 class="card__title">Position</h3>
+              <dl class="readout-list">
+                <div class="readout"><dt>Latitude</dt><dd id="lat">--</dd></div>
+                <div class="readout"><dt>Longitude</dt><dd id="lon">--</dd></div>
+                <div class="readout"><dt>Heading</dt><dd id="heading">--</dd></div>
+              </dl>
+            </section>
+
+            <section class="card">
+              <h3 class="card__title">Trip Summary</h3>
+              <dl class="readout-list">
+                <div class="readout"><dt>Total Distance</dt><dd id="distance-total">0.00 km / 0.00 mi</dd></div>
+                <div class="readout"><dt>Session Time</dt><dd id="session-duration">00:00:00</dd></div>
+              </dl>
+            </section>
+          </article>
+
+          <article class="display-page" data-label="Speed">
+            <h2 class="display-page__title">Speed & Stats</h2>
+            <section class="card">
+              <h3 class="card__title">Instant Speed</h3>
+              <dl class="readout-list">
+                <div class="readout readout--highlight"><dt>Speed (m/s)</dt><dd id="speed">--</dd></div>
+                <div class="readout"><dt>Speed (mph)</dt><dd id="speed-mph">--</dd></div>
+                <div class="readout"><dt>Speed (km/h)</dt><dd id="speed-kph">--</dd></div>
+                <div class="readout"><dt>Speed (knots)</dt><dd id="speed-knots">--</dd></div>
+              </dl>
+            </section>
+
+            <section class="card">
+              <h3 class="card__title">Historical</h3>
+              <dl class="readout-list">
+                <div class="readout"><dt>Minimum (m/s)</dt><dd id="speed-min">--</dd></div>
+                <div class="readout"><dt>Maximum (m/s)</dt><dd id="speed-max">--</dd></div>
+                <div class="readout"><dt>Average (m/s)</dt><dd id="speed-avg">--</dd></div>
+              </dl>
+            </section>
+          </article>
+
+          <article class="display-page" data-label="Performance">
+            <h2 class="display-page__title">Acceleration & Timers</h2>
+            <section class="card">
+              <h3 class="card__title">Acceleration</h3>
+              <dl class="readout-list">
+                <div class="readout"><dt>Acceleration</dt><dd id="accel">--</dd></div>
+                <div class="readout"><dt>Deceleration</dt><dd id="decel">--</dd></div>
+                <div class="readout"><dt>Peak Accel</dt><dd id="peak-accel">--</dd></div>
+                <div class="readout"><dt>Peak Decel</dt><dd id="peak-decel">--</dd></div>
+              </dl>
+            </section>
+
+            <section class="card">
+              <h3 class="card__title">Performance Timers</h3>
+              <dl class="readout-list">
+                <div class="readout"><dt>¼ Mile Status</dt><dd id="quarter-status">Standby</dd></div>
+                <div class="readout"><dt>¼ Mile Last</dt><dd id="quarter-last">--</dd></div>
+                <div class="readout"><dt>¼ Mile Best</dt><dd id="quarter-best">--</dd></div>
+                <div class="readout"><dt>0-60 mph Last</dt><dd id="zero-sixty-last">--</dd></div>
+                <div class="readout"><dt>0-60 mph Best</dt><dd id="zero-sixty-best">--</dd></div>
+              </dl>
+            </section>
+          </article>
+
+          <article class="display-page display-page--mirror" data-label="HUD Mirror">
+            <div class="mirror-display">
+              <p class="mirror-display__intro">Mirrored HUD for windshield reflections. Place your device on the dash and view the reflection for correct orientation.</p>
+              <div class="mirror-display__metrics">
+                <div class="mirror-display__metric mirror-display__metric--kph">
+                  <span class="mirror-display__label">KPH</span>
+                  <span class="mirror-display__value" id="mirror-speed-kph">--</span>
+                </div>
+                <div class="mirror-display__metric mirror-display__metric--mph">
+                  <span class="mirror-display__label">MPH</span>
+                  <span class="mirror-display__value" id="mirror-speed-mph">--</span>
+                </div>
+              </div>
+              <p class="mirror-display__hint">Tip: increase screen brightness and use dark surroundings for the sharpest reflection.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="display-upload">
+        <div>
+          <h2>Custom Displays</h2>
+          <p>Upload a set of HTML, CSS, and JS files to create swipeable screens for client-built layouts. Files with the same base name will be grouped into a display. <strong>Tip:</strong> inside your custom JS listen for the <code>telemetry-update</code> event to react to live data.</p>
+        </div>
+        <label class="upload-button">
+          <input id="display-upload" type="file" accept=".html,.htm,.css,.js" multiple>
+          <span>Upload Display Files</span>
+        </label>
+        <ul class="upload-list" id="custom-display-list" aria-live="polite"></ul>
+      </section>
+    </main>
+  </div>
 
   <script src="script.js"></script>
 </body>

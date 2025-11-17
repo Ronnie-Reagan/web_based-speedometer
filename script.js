@@ -67,6 +67,7 @@ createDisplayUploadManager(displayElements, (frame, meta) => {
   carousel.refreshPages();
 });
 updateCustomDisplayList(displayElements.uploadList, customDisplayMeta);
+initializeViewportScaling();
 
 function byId(id) {
   return document.getElementById(id);
@@ -1217,4 +1218,63 @@ function composeModuleDocument(parts) {
 
 function escapeScriptContent(content = "") {
   return content.replace(/<\/script/gi, "<\\/script");
+}
+
+function initializeViewportScaling() {
+  const stage = document.querySelector("[data-app-stage]");
+  const surface = document.querySelector("[data-app-surface]");
+  if (!stage || !surface) {
+    return;
+  }
+
+  const state = { orientation: null };
+
+  function readBaseDimensions() {
+    const styles = window.getComputedStyle(stage);
+    const widthVar = styles.getPropertyValue("--surface-width").trim();
+    const heightVar = styles.getPropertyValue("--surface-height").trim();
+    const width = parseFloat(widthVar);
+    const height = parseFloat(heightVar);
+    const fallback = surface.getBoundingClientRect();
+    return {
+      width: Number.isFinite(width) ? width : fallback.width || 1,
+      height: Number.isFinite(height) ? height : fallback.height || 1,
+    };
+  }
+
+  function applyScale() {
+    const orientation = window.innerWidth >= window.innerHeight ? "landscape" : "portrait";
+    if (state.orientation !== orientation) {
+      state.orientation = orientation;
+      stage.dataset.orientation = orientation;
+    }
+
+    const bounds = stage.getBoundingClientRect();
+    const availableWidth = Math.max(bounds.width, 1);
+    const availableHeight = Math.max(bounds.height, 1);
+    const { width, height } = readBaseDimensions();
+    const rawScale = Math.min(availableWidth / width, availableHeight / height);
+    const safeScale = Math.max(0.35, Math.min(rawScale, 1.75));
+    document.documentElement.style.setProperty("--app-scale", safeScale.toFixed(4));
+  }
+
+  const handleResize = debounce(applyScale, 75);
+  window.addEventListener("resize", handleResize);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(applyScale, 140);
+  });
+
+  applyScale();
+}
+
+function debounce(fn, wait = 100) {
+  let timeoutId = null;
+  return function debounced(...args) {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutId = window.setTimeout(() => {
+      fn.apply(this, args);
+    }, wait);
+  };
 }
