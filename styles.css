@@ -34,6 +34,7 @@ body {
   justify-content: center;
   align-items: stretch;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 @supports (height: 100dvh) {
@@ -252,7 +253,6 @@ body {
   padding: 1.5rem clamp(0.5rem, 2vw, 1.5rem);
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .display-page__title {
@@ -350,7 +350,6 @@ body {
 
 .display-upload {
   padding: 1.5rem;
-  margin-top: 2rem;
   border-radius: 18px;
   background: rgba(18, 26, 37, 0.5);
   border: 1px dashed rgba(75, 225, 255, 0.5);
