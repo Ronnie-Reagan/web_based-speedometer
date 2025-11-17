@@ -9,10 +9,8 @@ const elements = {
   lat: byId("lat"),
   lon: byId("lon"),
   heading: byId("heading"),
-  speed: byId("speed"),
-  speedMph: byId("speed-mph"),
-  speedKph: byId("speed-kph"),
-  speedKnots: byId("speed-knots"),
+  speedPrimary: byId("speed-primary"),
+  speedUnit: byId("speed-unit-label"),
   speedMin: byId("speed-min"),
   speedMax: byId("speed-max"),
   speedAvg: byId("speed-avg"),
@@ -31,6 +29,7 @@ const elements = {
   resetButton: byId("reset-stats"),
   mirrorKph: byId("mirror-speed-kph"),
   mirrorMph: byId("mirror-speed-mph"),
+  unitToggle: document.querySelector("[data-speed-toggle]"),
 };
 
 const displayElements = {
@@ -44,6 +43,14 @@ const displayElements = {
   uploadList: byId("custom-display-list"),
 };
 
+const SPEED_UNIT_STORAGE_KEY = "speed_unit";
+const DEFAULT_SPEED_UNIT = "mph";
+const SPEED_UNITS = {
+  mps: { label: "m/s", decimals: 2, heroDecimals: 2, fromBase: value => value },
+  mph: { label: "mph", decimals: 2, heroDecimals: 1, fromBase: value => value * 2.236936 },
+  kph: { label: "km/h", decimals: 2, heroDecimals: 1, fromBase: value => value * 3.6 },
+};
+
 const speedStatsStore = createSpeedStatsStore();
 const accelerationStore = createAccelerationStore();
 const distanceStore = createDistanceStore();
@@ -55,6 +62,8 @@ let lastPosition = null;
 let sessionStart = null;
 let sessionTimer = null;
 let isTracking = false;
+let activeSpeedUnit = loadSpeedUnitPreference();
+let lastSpeedSnapshot = { base: null, mph: null, kph: null, knots: null };
 const customDisplayFrames = new Set();
 const customDisplayMeta = [];
 const telemetryState = createDefaultTelemetrySnapshot();
@@ -67,6 +76,7 @@ createDisplayUploadManager(displayElements, (frame, meta) => {
   carousel.refreshPages();
 });
 updateCustomDisplayList(displayElements.uploadList, customDisplayMeta);
+initializeViewportScaling();
 
 function byId(id) {
   return document.getElementById(id);
@@ -75,6 +85,8 @@ function byId(id) {
 function bindControls() {
   elements.startButton?.addEventListener("click", toggleTracking);
   elements.resetButton?.addEventListener("click", resetAllStores);
+  bindSpeedUnitToggle();
+  setSpeedUnit(activeSpeedUnit, { persist: false });
   updateStartButtonState();
 }
 
@@ -313,10 +325,8 @@ function headingToCardinal(heading) {
 
 function renderSpeed(speed) {
   if (!Number.isFinite(speed)) {
-    elements.speed.textContent = "--";
-    elements.speedMph.textContent = "--";
-    elements.speedKph.textContent = "--";
-    elements.speedKnots.textContent = "--";
+    lastSpeedSnapshot = { base: null, mph: null, kph: null, knots: null };
+    updateSpeedReadout();
     updateMirrorSpeedDisplay(null, null);
     return { speed: null, speedMph: null, speedKph: null, speedKnots: null };
   }
@@ -324,10 +334,8 @@ function renderSpeed(speed) {
   const mph = speed * 2.236936;
   const kph = speed * 3.6;
   const knots = speed * 1.943844;
-  elements.speed.textContent = speed.toFixed(2);
-  elements.speedMph.textContent = mph.toFixed(2);
-  elements.speedKph.textContent = kph.toFixed(2);
-  elements.speedKnots.textContent = knots.toFixed(2);
+  lastSpeedSnapshot = { base: speed, mph, kph, knots };
+  updateSpeedReadout();
   updateMirrorSpeedDisplay(kph, mph);
   return { speed, speedMph: mph, speedKph: kph, speedKnots: knots };
 }
@@ -342,10 +350,81 @@ function updateMirrorSpeedDisplay(kph, mph) {
 }
 
 function renderSpeedStats(stats) {
-  elements.speedMin.textContent = formatNullable(stats.min);
-  elements.speedMax.textContent = formatNullable(stats.max);
-  elements.speedAvg.textContent = formatNullable(stats.average);
+  elements.speedMin.textContent = formatSpeedDisplay(stats.min);
+  elements.speedMax.textContent = formatSpeedDisplay(stats.max);
+  elements.speedAvg.textContent = formatSpeedDisplay(stats.average);
   return { speedMin: stats.min, speedMax: stats.max, speedAvg: stats.average };
+}
+
+function bindSpeedUnitToggle() {
+  if (!elements.unitToggle) {
+    return;
+  }
+  elements.unitToggle.addEventListener("click", event => {
+    const target = event.target.closest("[data-unit]");
+    if (!target) {
+      return;
+    }
+    setSpeedUnit(target.dataset.unit);
+  });
+}
+
+function setSpeedUnit(unit, options = {}) {
+  const normalized = SPEED_UNITS[unit] ? unit : DEFAULT_SPEED_UNIT;
+  const shouldPersist = options.persist !== false;
+  activeSpeedUnit = normalized;
+  syncUnitToggleButtons();
+  updateSpeedReadout();
+  if (elements.speedMin && elements.speedMax && elements.speedAvg) {
+    renderSpeedStats(speedStatsStore.get());
+  }
+  if (shouldPersist) {
+    persistSpeedUnitPreference(normalized);
+  }
+}
+
+function syncUnitToggleButtons() {
+  if (!elements.unitToggle) {
+    return;
+  }
+  const buttons = elements.unitToggle.querySelectorAll("[data-unit]");
+  buttons.forEach(button => {
+    const isActive = button.dataset.unit === activeSpeedUnit;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function updateSpeedReadout() {
+  if (!elements.speedPrimary || !elements.speedUnit) {
+    return;
+  }
+  const config = SPEED_UNITS[activeSpeedUnit] || SPEED_UNITS[DEFAULT_SPEED_UNIT];
+  const formatted = formatSpeedValue(lastSpeedSnapshot.base, activeSpeedUnit, config.heroDecimals);
+  elements.speedPrimary.textContent = formatted ?? "--";
+  elements.speedUnit.textContent = config.label;
+}
+
+function formatSpeedValue(value, unitKey, decimalsOverride) {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  const config = SPEED_UNITS[unitKey] || SPEED_UNITS[DEFAULT_SPEED_UNIT];
+  const converted = config.fromBase(value);
+  if (!Number.isFinite(converted)) {
+    return null;
+  }
+  const decimals = typeof decimalsOverride === "number" ? decimalsOverride : config.decimals;
+  return converted.toFixed(decimals);
+}
+
+function formatSpeedDisplay(value) {
+  const formatted = formatSpeedValue(value, activeSpeedUnit);
+  if (formatted === null) {
+    return "--";
+  }
+  const config = SPEED_UNITS[activeSpeedUnit] || SPEED_UNITS[DEFAULT_SPEED_UNIT];
+  return `${formatted} ${config.label}`;
 }
 
 function renderAcceleration(state) {
@@ -430,6 +509,26 @@ function persistState(key, value) {
     window.localStorage.setItem(LOCAL_STORAGE_PREFIX + key, JSON.stringify(value));
   } catch (err) {
     console.warn("Unable to persist state", err);
+  }
+}
+
+function loadSpeedUnitPreference() {
+  try {
+    const stored = window.localStorage.getItem(LOCAL_STORAGE_PREFIX + SPEED_UNIT_STORAGE_KEY);
+    if (stored && SPEED_UNITS[stored]) {
+      return stored;
+    }
+  } catch (err) {
+    console.warn("Unable to read speed unit preference", err);
+  }
+  return DEFAULT_SPEED_UNIT;
+}
+
+function persistSpeedUnitPreference(unit) {
+  try {
+    window.localStorage.setItem(LOCAL_STORAGE_PREFIX + SPEED_UNIT_STORAGE_KEY, unit);
+  } catch (err) {
+    console.warn("Unable to persist speed unit preference", err);
   }
 }
 
@@ -1217,4 +1316,63 @@ function composeModuleDocument(parts) {
 
 function escapeScriptContent(content = "") {
   return content.replace(/<\/script/gi, "<\\/script");
+}
+
+function initializeViewportScaling() {
+  const stage = document.querySelector("[data-app-stage]");
+  const surface = document.querySelector("[data-app-surface]");
+  if (!stage || !surface) {
+    return;
+  }
+
+  const state = { orientation: null };
+
+  function readBaseDimensions() {
+    const styles = window.getComputedStyle(stage);
+    const widthVar = styles.getPropertyValue("--surface-width").trim();
+    const heightVar = styles.getPropertyValue("--surface-height").trim();
+    const width = parseFloat(widthVar);
+    const height = parseFloat(heightVar);
+    const fallback = surface.getBoundingClientRect();
+    return {
+      width: Number.isFinite(width) ? width : fallback.width || 1,
+      height: Number.isFinite(height) ? height : fallback.height || 1,
+    };
+  }
+
+  function applyScale() {
+    const orientation = window.innerWidth >= window.innerHeight ? "landscape" : "portrait";
+    if (state.orientation !== orientation) {
+      state.orientation = orientation;
+      stage.dataset.orientation = orientation;
+    }
+
+    const bounds = stage.getBoundingClientRect();
+    const availableWidth = Math.max(bounds.width, 1);
+    const availableHeight = Math.max(bounds.height, 1);
+    const { width, height } = readBaseDimensions();
+    const rawScale = Math.min(availableWidth / width, availableHeight / height);
+    const safeScale = Math.max(0.35, Math.min(rawScale, 1.75));
+    document.documentElement.style.setProperty("--app-scale", safeScale.toFixed(4));
+  }
+
+  const handleResize = debounce(applyScale, 75);
+  window.addEventListener("resize", handleResize);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(applyScale, 140);
+  });
+
+  applyScale();
+}
+
+function debounce(fn, wait = 100) {
+  let timeoutId = null;
+  return function debounced(...args) {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutId = window.setTimeout(() => {
+      fn.apply(this, args);
+    }, wait);
+  };
 }
