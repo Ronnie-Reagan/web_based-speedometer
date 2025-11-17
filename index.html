@@ -25,7 +25,7 @@
       <div class="pager" aria-live="polite">
         <button id="display-prev" class="pager__button" type="button" aria-label="Previous display">‹</button>
         <div class="pager__status">
-          <span id="display-label" class="pager__label">Overview</span>
+          <span id="display-label" class="pager__label">Instant Speed</span>
           <small id="display-indicator" class="pager__indicator">1 / X</small>
         </div>
         <button id="display-next" class="pager__button" type="button" aria-label="Next display">›</button>
@@ -35,6 +35,36 @@
     <!-- Carousel -->
     <section class="display-wrapper" data-display-carousel>
       <div class="display-track" id="display-track">
+
+        <!-- Current Speed -->
+        <article class="display-page display-page--speed" data-label="Instant Speed">
+          <h2 class="display-page__title">Current Speed</h2>
+
+          <section class="card speed-hero">
+            <div class="speed-hero__meta">
+              <p class="speed-hero__hint">Live speed</p>
+              <p class="speed-hero__updated" id="speed-updated">Waiting for signal…</p>
+            </div>
+            <div class="speed-hero__value">
+              <span class="speed-hero__number" id="speed-primary">--</span>
+              <span class="speed-hero__unit" id="speed-unit-label">mph</span>
+            </div>
+            <div class="speed-toggle" data-speed-toggle role="group" aria-label="Select preferred speed units">
+              <button type="button" data-unit="mph" aria-pressed="true">MPH</button>
+              <button type="button" data-unit="kph" aria-pressed="false">KM/H</button>
+              <button type="button" data-unit="mps" aria-pressed="false">M/S</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <dl class="readout-list">
+              <div class="readout readout--highlight"><dt>Speed (m/s)</dt><dd id="speed">--</dd></div>
+              <div class="readout"><dt>Speed (mph)</dt><dd id="speed-mph">--</dd></div>
+              <div class="readout"><dt>Speed (km/h)</dt><dd id="speed-kph">--</dd></div>
+              <div class="readout"><dt>Speed (knots)</dt><dd id="speed-knots">--</dd></div>
+            </dl>
+          </section>
+        </article>
 
         <!-- Position Page -->
         <article class="display-page" data-label="Position">
@@ -47,20 +77,6 @@
               <div class="readout"><dt>Heading</dt><dd id="heading">--</dd></div>
               <div class="readout"><dt>Total Distance</dt><dd id="distance-total">0.00 km / 0.00 mi</dd></div>
               <div class="readout"><dt>Session Time</dt><dd id="session-duration">00:00:00</dd></div>
-            </dl>
-          </section>
-        </article>
-
-        <!-- Current Speed -->
-        <article class="display-page" data-label="Instant Speed">
-          <h2 class="display-page__title">Current Speed</h2>
-
-          <section class="card">
-            <dl class="readout-list">
-              <div class="readout readout--highlight"><dt>Speed (m/s)</dt><dd id="speed">--</dd></div>
-              <div class="readout"><dt>Speed (mph)</dt><dd id="speed-mph">--</dd></div>
-              <div class="readout"><dt>Speed (km/h)</dt><dd id="speed-kph">--</dd></div>
-              <div class="readout"><dt>Speed (knots)</dt><dd id="speed-knots">--</dd></div>
             </dl>
           </section>
         </article>

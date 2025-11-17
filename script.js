@@ -11,6 +11,11 @@ const elements = {
   heading: byId("heading"),
   speedPrimary: byId("speed-primary"),
   speedUnit: byId("speed-unit-label"),
+  speedUpdated: byId("speed-updated"),
+  speedMps: byId("speed"),
+  speedMph: byId("speed-mph"),
+  speedKph: byId("speed-kph"),
+  speedKnots: byId("speed-knots"),
   speedMin: byId("speed-min"),
   speedMax: byId("speed-max"),
   speedAvg: byId("speed-avg"),
@@ -196,7 +201,7 @@ function handlePosition(position) {
   const distanceData = renderDistance(totalDistance);
 
   const speedValue = resolveSpeed(speed, distanceDelta, locationSnapshot);
-  const speedData = renderSpeed(speedValue);
+  const speedData = renderSpeed(speedValue, position.timestamp);
 
   const stats = speedStatsStore.update(speedValue);
   const statsData = renderSpeedStats(stats);
@@ -323,11 +328,13 @@ function headingToCardinal(heading) {
   return headings[index];
 }
 
-function renderSpeed(speed) {
+function renderSpeed(speed, sourceTimestamp = null) {
   if (!Number.isFinite(speed)) {
     lastSpeedSnapshot = { base: null, mph: null, kph: null, knots: null };
     updateSpeedReadout();
+    updateSpeedConversions(lastSpeedSnapshot);
     updateMirrorSpeedDisplay(null, null);
+    updateSpeedTimestamp(null);
     return { speed: null, speedMph: null, speedKph: null, speedKnots: null };
   }
 
@@ -336,7 +343,11 @@ function renderSpeed(speed) {
   const knots = speed * 1.943844;
   lastSpeedSnapshot = { base: speed, mph, kph, knots };
   updateSpeedReadout();
+  updateSpeedConversions(lastSpeedSnapshot);
   updateMirrorSpeedDisplay(kph, mph);
+  updateSpeedTimestamp(
+    Number.isFinite(sourceTimestamp) ? sourceTimestamp : Date.now()
+  );
   return { speed, speedMph: mph, speedKph: kph, speedKnots: knots };
 }
 
@@ -403,6 +414,36 @@ function updateSpeedReadout() {
   const formatted = formatSpeedValue(lastSpeedSnapshot.base, activeSpeedUnit, config.heroDecimals);
   elements.speedPrimary.textContent = formatted ?? "--";
   elements.speedUnit.textContent = config.label;
+}
+
+function updateSpeedConversions(snapshot) {
+  setSpeedDetail(elements.speedMps, snapshot.base, value => value.toFixed(2));
+  setSpeedDetail(elements.speedMph, snapshot.mph, value => value.toFixed(1));
+  setSpeedDetail(elements.speedKph, snapshot.kph, value => value.toFixed(1));
+  setSpeedDetail(elements.speedKnots, snapshot.knots, value => value.toFixed(1));
+}
+
+function setSpeedDetail(node, value, formatter) {
+  if (!node) {
+    return;
+  }
+  node.textContent = Number.isFinite(value) ? formatter(value) : "--";
+}
+
+function updateSpeedTimestamp(timestamp) {
+  if (!elements.speedUpdated) {
+    return;
+  }
+  if (!Number.isFinite(timestamp)) {
+    elements.speedUpdated.textContent = "Waiting for signal…";
+    return;
+  }
+  const formatted = new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  elements.speedUpdated.textContent = `Updated at ${formatted}`;
 }
 
 function formatSpeedValue(value, unitKey, decimalsOverride) {
