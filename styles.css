@@ -1,3 +1,6 @@
+/* -------------------------------------------------
+   ROOT THEME
+------------------------------------------------- */
 :root {
   --bg: #04070d;
   --panel-bg: rgba(13, 20, 31, 0.85);
@@ -8,24 +11,22 @@
   --highlight: #00ff9c;
   --danger: #ff7b7b;
   --success: #6fffb0;
-  --surface-width: 420px;
-  --surface-height: 820px;
-  --app-scale: 1;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
-html,
-body {
-  height: 100%;
-}
-
+/* -------------------------------------------------
+   GLOBAL PAGE
+------------------------------------------------- */
 body {
   margin: 0;
-  background: radial-gradient(circle at top, rgba(75, 225, 255, 0.12), transparent 55%),
+  padding: clamp(1rem, 2.5vw, 2rem) clamp(1rem, 3vw, 2.5rem);
+  background:
+    radial-gradient(circle at top, rgba(75, 225, 255, 0.12), transparent 55%),
     radial-gradient(circle at bottom, rgba(111, 255, 176, 0.08), transparent 60%),
     var(--bg);
   color: var(--text);
@@ -50,26 +51,13 @@ body {
   }
 }
 
-.app-stage[data-orientation="landscape"] {
-  --surface-width: 760px;
-  --surface-height: 500px;
-}
-
-.app-surface {
-  width: var(--surface-width);
-  height: var(--surface-height);
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.75rem, 2vw, 1.5rem);
-  padding: clamp(0.85rem, 2vw, 1.5rem);
-  border-radius: 32px;
-  border: 1px solid rgba(65, 85, 114, 0.35);
-  background: rgba(5, 8, 12, 0.82);
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(18px);
-  transform: scale(var(--app-scale));
-  transform-origin: center;
-  overflow: hidden;
+/* -------------------------------------------------
+   DASHBOARD LAYOUT
+------------------------------------------------- */
+.dashboard {
+  width: min(1040px, 100%);
+  display: grid;
+  gap: 1.5rem;
 }
 
 .dashboard__header {
@@ -88,6 +76,9 @@ body {
   font-size: 0.95rem;
 }
 
+/* -------------------------------------------------
+   CONTROLS
+------------------------------------------------- */
 .controls {
   display: flex;
   flex-direction: column;
@@ -117,9 +108,9 @@ body {
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.controls__stack button:hover {
+.controls button:hover {
+  background: rgba(75, 225, 255, 0.28);
   transform: translateY(-1px);
-  background: rgba(75, 225, 255, 0.25);
 }
 
 .controls__stack button.button--stop {
@@ -128,60 +119,33 @@ body {
   color: #ffe0e0;
 }
 
-.controls__stack button:disabled {
-  opacity: 0.6;
+.controls button:disabled {
   cursor: not-allowed;
+  opacity: 0.6;
   transform: none;
 }
 
-.controls__tray {
+.controls button:focus-visible,
+.pager__button:focus-visible,
+.upload-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* -------------------------------------------------
+   PAGER
+------------------------------------------------- */
+.pager {
   display: flex;
   flex-wrap: wrap;
   gap: 0.85rem;
   align-items: center;
-  justify-content: space-between;
-}
-
-.unit-toggle {
-  display: inline-flex;
-  gap: 0.35rem;
-  padding: 0.25rem;
-  border-radius: 999px;
-  background: rgba(20, 30, 44, 0.9);
-  border: 1px solid rgba(66, 89, 123, 0.6);
-}
-
-.unit-toggle__button {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.unit-toggle__button.is-active {
-  background: var(--accent);
-  color: #03121b;
-}
-
-.unit-toggle__button:focus-visible {
-  outline: 2px solid var(--highlight);
-  outline-offset: 2px;
-}
-
-.pager {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  background: rgba(18, 26, 37, 0.88);
+  border: 1px solid rgba(32, 43, 61, 0.9);
   border-radius: 14px;
-  border: 1px solid rgba(61, 79, 107, 0.6);
-  background: rgba(9, 14, 22, 0.9);
 }
 
 .pager__button {
@@ -213,7 +177,51 @@ body {
 }
 
 .pager__indicator {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------
+   CARDS
+------------------------------------------------- */
+.card {
+  padding: 1.5rem;
+  background: rgba(18, 26, 37, 0.88);
+  border: 1px solid rgba(32, 43, 61, 0.9);
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.card__title {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* -------------------------------------------------
+   READOUT LISTS
+------------------------------------------------- */
+.readout-list {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.readout {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.readout dt {
+  margin: 0;
   font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
@@ -265,22 +273,9 @@ body {
 
 .speed-panel__eyebrow {
   margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.3em;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.speed-panel__heading {
-  margin: 0;
-  font-size: 0.85rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.speed-panel__heading span {
   color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .speed-panel__value {
@@ -373,24 +368,139 @@ body {
   color: var(--success);
 }
 
-.display-upload {
-  padding: 1rem;
+/* -------------------------------------------------
+   DISPLAY CAROUSEL
+------------------------------------------------- */
+.display-wrapper {
+  overflow: hidden;
   border-radius: 20px;
+  background: rgba(6, 8, 12, 0.5);
+  border: 1px solid rgba(32, 43, 61, 0.9);
+}
+
+.display-track {
+  display: flex;
+  will-change: transform;
+  transition: transform 0.35s ease;
+  touch-action: pan-y pinch-zoom;
+}
+
+.display-page {
+  min-width: 100%;
+  padding: 1.5rem clamp(0.5rem, 2vw, 1.5rem);
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.display-page__title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  grid-column: 1 / -1;
+}
+
+/* -------------------------------------------------
+   MIRROR HUD PAGE
+------------------------------------------------- */
+.display-page--mirror {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1.5rem;
+  background:
+    radial-gradient(circle at top, rgba(0, 255, 197, 0.12), transparent 60%),
+    #020303;
+  transform: scaleX(-1);
+}
+
+.mirror-display {
+  max-width: 600px;
+  text-align: center;
+}
+
+.mirror-display__intro,
+.mirror-display__hint {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.05em;
+}
+
+.mirror-display__metrics {
+  display: grid;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.mirror-display__metric {
+  padding: 1.5rem;
+  border-radius: 28px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  text-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+}
+
+.mirror-display__metric--kph {
+  color: #47ffd9;
+  border-color: rgba(0, 255, 197, 0.55);
+}
+
+.mirror-display__metric--mph {
+  color: #ff7b7b;
+  border-color: rgba(255, 123, 123, 0.55);
+}
+
+.mirror-display__label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+}
+
+.mirror-display__value {
+  display: block;
+  font-weight: 700;
+  font-size: clamp(3rem, 18vw, 6.5rem);
+  letter-spacing: 0.06em;
+}
+
+/* -------------------------------------------------
+   CUSTOM DISPLAY UPLOAD
+------------------------------------------------- */
+.display-page--external {
+  display: block;
+  padding: 0;
+}
+
+.display-page--external iframe {
+  width: 100%;
+  border: none;
+  border-radius: 18px;
+  min-height: clamp(260px, 60vh, 520px);
+  background: rgba(6, 8, 12, 0.85);
+}
+
+.display-upload {
+  padding: 1.5rem;
+  margin-top: 2rem;
+  border-radius: 18px;
+  background: rgba(18, 26, 37, 0.5);
   border: 1px dashed rgba(75, 225, 255, 0.5);
-  background: rgba(13, 20, 31, 0.7);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
 }
 
-.display-upload h2 {
-  margin: 0;
-}
-
 .display-upload p {
   margin: 0;
+  font-size: 0.95rem;
   color: var(--muted);
-  font-size: 0.9rem;
 }
 
 .upload-button {
@@ -411,22 +521,28 @@ body {
 
 .upload-list {
   margin: 0;
-  padding-left: 1.1rem;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
   color: var(--muted);
-  font-size: 0.85rem;
 }
 
 .upload-list li {
   margin-bottom: 0.2rem;
 }
 
+/* -------------------------------------------------
+   RESPONSIVE
+------------------------------------------------- */
 @media (max-width: 640px) {
-  .controls__tray {
-    flex-direction: column;
-    align-items: stretch;
+  body {
+    padding: 1rem;
   }
-
-  .unit-toggle,
+  .card {
+    padding: 1.25rem;
+  }
+  .readout-list {
+    grid-template-columns: 1fr;
+  }
   .pager {
     width: 100%;
     justify-content: center;
@@ -437,9 +553,35 @@ body {
   }
 }
 
-@media (min-width: 1200px) {
-  :root {
-    --surface-width: 520px;
-    --surface-height: 940px;
+@media (min-width: 900px) {
+  .controls {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .display-page {
+    min-height: 460px;
+  }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  body {
+    padding: 0.75rem;
+  }
+  .dashboard {
+    gap: 1rem;
+  }
+  .card {
+    padding: 1rem;
+  }
+  .display-page {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  .display-page--mirror {
+    padding: 1.25rem;
+  }
+  .display-page--external iframe {
+    min-height: clamp(220px, 55vh, 420px);
   }
 }
